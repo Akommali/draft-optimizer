@@ -14,7 +14,6 @@ def load_projections():
     positions = ['QB', 'RB', 'WR', 'TE', 'K']
 
     # Maps each position to its corresponding CSV filename in the data/ folder
-    # Works like a Java HashMap<String, String>
     filenames = {
         'QB': 'qb_projections.csv',
         'RB': 'rb_projections.csv',
@@ -40,13 +39,12 @@ def load_projections():
         else:
             df = pd.read_csv(filepath, skiprows=[1])  # Others: skip blank row
 
-        # The CSV has many stat columns (yards, TDs, etc.)
+       
         # We only need Player name, Team, and FPTS (fantasy points)
         # .copy() makes a fresh independent copy so we don't edit the original
         df = df[['Player', 'Team', 'FPTS']].copy()
 
-        # Add a Position column since the CSV files don't include it
-        # This sets every row in this table to the current position (e.g. 'QB')
+        # Adds a 'Position' column to the DataFrame and sets every row to the current position (pos)
         df['Position'] = pos
 
         # FantasyPros sometimes formats large numbers with commas e.g. "1,234.5"
@@ -90,7 +88,7 @@ def calculate_vor(players):
     VOR = player's projected points - replacement level player's projected points
 
     The replacement level player is the last expected starter at that position
-    in a 10-team league. Any player below replacement level has negative VOR
+    in a 10 man league. Any player below replacement level has negative VOR
     and is not worth drafting as a starter.
 
     Returns the same DataFrame with two new columns added:
@@ -98,16 +96,12 @@ def calculate_vor(players):
     - vor: how many points above replacement this player is projected for
     """
 
-    # Replacement level = the last player expected to be a starter in a 10-team league
-    # Each team starts: 1 QB, 2 RB, 2 WR, 1 TE, 1 K
-    # Multiply by 10 teams to get total starters across the whole league:
-    # QB: 10x1=10, RB: 10x2=20, WR: 10x2=20, TE: 10x1=10, K: 10x1=10
     replacement_rank = {
-        'QB': 10,   # 10 teams x 1 QB starter = top 10 QBs are starters
-        'RB': 20,   # 10 teams x 2 RB starters = top 20 RBs are starters
-        'WR': 20,   # 10 teams x 2 WR starters = top 20 WRs are starters
-        'TE': 10,   # 10 teams x 1 TE starter = top 10 TEs are starters
-        'K':  10,   # 10 teams x 1 K starter = top 10 Ks are starters
+        'QB': 10,   
+        'RB': 20,   
+        'WR': 20,   
+        'TE': 10,   
+        'K':  10,   
     }
 
     # Empty list to hold each position's table after VOR is calculated
@@ -119,12 +113,9 @@ def calculate_vor(players):
         pos_players = pos_players.sort_values('projected_points', ascending=False).reset_index(drop=True)
 
         # Find the replacement level player's index
-        # min() protects us in case there are fewer players than expected
-        # e.g. if rank=20 but only 18 RBs exist, use index 17 (last one)
         rep_index = min(rank, len(pos_players) - 1)
 
-        # Look up that player's projected points — this is our baseline
-        # .loc[row, column] accesses a specific cell in the table
+        # Look up that replacement player's projected points
         replacement_points = pos_players.loc[rep_index, 'projected_points']
 
         # Add replacement_points as a column (same value for every player at this position)
@@ -140,7 +131,7 @@ def calculate_vor(players):
     # Combine all positions back into one table
     result = pd.concat(vor_list, ignore_index=True)
 
-    # Sort by VOR descending — this is our true positional-scarcity-adjusted draft board
+    # Sort by VOR descending
     result = result.sort_values('vor', ascending=False).reset_index(drop=True)
 
     return result
